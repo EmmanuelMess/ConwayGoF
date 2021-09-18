@@ -1,5 +1,6 @@
-#include <stdio.h>
+#define _POSIX_C_SOURCE 200112L
 #include <stdlib.h>
+#include <stdio.h>
 #include <pthread.h>
 #include <math.h>
 #include <sys/sysinfo.h>
@@ -37,8 +38,7 @@ void *trabajo_thread(argshilo *arg) {
 		// Espero a que todos los threads terminen antes de continuar.
 		pthread_barrier_wait(&barrier);
 	}
-	// Liberamos memoria y finalizamos el thread
-	free(arg);
+	// Finalizamos el thread
 	pthread_exit(0);
 }
 
@@ -65,15 +65,19 @@ int main(int argc, char **argv) {
 	
 	// Creamos las estructuras que contienen los argumentos 
 	// necesarios para cada thread y creamos a cada uno de ellos.
+	argshilo *arg = calloc(nthread, sizeof (argshilo));
 	for (int i = 0; i < nthread; i++) {
-		argshilo *arg = malloc(sizeof (argshilo));
-		arg->inicio = interv[2*i];
-		arg->final = interv[(2*i) + 1];
-		arg->viejo = viejo;
-		arg->nuevo = nuevo;
-		arg->ciclos = game->ciclos;
-		pthread_create(&threads[i], NULL, (void *)trabajo_thread, (void *) arg);
+		arg[i] = (argshilo) {
+			.inicio = interv[2*i],
+			.final = interv[(2*i) + 1],
+			.viejo = viejo,
+			.nuevo = nuevo,
+			.ciclos = game->ciclos,
+		};
+		pthread_create(&threads[i], NULL, (void *)trabajo_thread, (void *) &(arg[i]));
 	}
+
+	free(arg);
 
 	// Una vez todos los threads finalizaron su trabajo, 
 	// escribimos el estado final del tablero y liberamos
